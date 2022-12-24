@@ -1,0 +1,63 @@
+---
+- name: Download Zabbix Agent for Centos7
+  command: "{{ centos_url }}"
+  when: ansible_distribution == "CentOS"
+
+- name: Download Zabbix Agent for Ubuntu18.04
+  get_url:
+    url: "{{ ubuntu_url_bionic }}"
+    dest: /tmp/zabbix18.deb
+    force_basic_auth: yes
+  when: (ansible_distribution == "Ubuntu") and (ansible_distribution_version == "18.04")
+
+- name: Download Zabbix Agent for Ubuntu20.04
+  get_url: 
+    url: "{{ ubuntu_url_focal }}"
+    dest: /tmp/zabbix.deb
+  when: (ansible_distribution == "Ubuntu") and (ansible_distribution_version == "20.04")
+
+- name: Installation1804
+  apt: 
+    deb: /tmp/zabbix18.deb
+    state: present
+  when: (ansible_distribution == "Ubuntu") and (ansible_distribution_version == "18.04")
+
+- name: Installation2004
+  apt:
+    deb: /tmp/zabbix.deb
+    state: present
+  when: (ansible_distribution == "Ubuntu") and (ansible_distribution_version == "20.04")
+
+- name: Installation for Ubuntu
+  apt: 
+    name: zabbix-agent
+    state: present
+    update-cache: yes
+  when: ansible_distribution == "Ubuntu"
+
+- name: Clean Centos7
+  shell: yum clean all
+  when: ansible_distribution == "CentOS"
+
+- name: Installation for Centos7
+  yum: 
+    name: zabbix-agent
+    state: present
+  when: ansible_distribution == "CentOS"
+
+- name: Configuration of Zabbix Agent
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - {regexp: '^Server=127.0.0.1', line: "{{ srvname }}"}
+    - {regexp: '^ServerActive=127.0.0.1', line: "{{ srvactive }}"}
+    - {regexp: '^Hostname=Zabbix server', line: "Hostname={{ ansible_default_ipv4.address }}"}
+
+- name: Enable and Restart Zabbix Agent
+  service: 
+    name: zabbix-agent
+    state: restarted
+    enabled: yes
+
